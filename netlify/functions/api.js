@@ -2,15 +2,15 @@ import express from 'express';
 import serverless from 'serverless-http';
 import cookie from 'cookie';
 import crypto from 'crypto';
-import { getStore } from '@netlify/blobs';
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-const store = getStore('arab-cafe');
+
 const JORDAN_LOCALE = 'en-CA';
 const TZ = 'Asia/Amman';
+let memoryState = null;
 const SEED = {
   CATEGORY_IMAGE_FILES: {
     'مشروبات ساخنة': 'hot-coffee.png',
@@ -54,8 +54,8 @@ function json(res, data, status=200){ res.status(status).json(data); }
 function safeId(){ return crypto.randomUUID(); }
 
 async function loadState() {
-  let state = await store.get('state.json', { type: 'json' });
-  if (state) return state;
+  if (memoryState) return memoryState;
+
   let categoryId = 1, itemId = 1;
   const categories = SEED.MENU_DATA.map((cat) => ({
     id: categoryId++,
@@ -64,6 +64,38 @@ async function loadState() {
     sort_order: cat.sort_order,
     show_image: cat.show_image,
   }));
+
+  const items = [];
+  for (const cat of SEED.MENU_DATA) {
+    const category = categories.find((c) => c.name === cat.name);
+    const imageFile = SEED.CATEGORY_IMAGE_FILES[cat.name] || null;
+
+    cat.items.forEach((row, idx) => {
+      items.push({
+        id: itemId++,
+        name: row[0],
+        description: row[2] || `منيو ${cat.name} - Arab Cafe`,
+        price: Number(row[1]),
+        available: true,
+        featured: idx < 3,
+        category_id: category.id,
+        image_url: cat.show_image && imageFile ? `/seed/${imageFile}` : null,
+        image_data_url: null,
+      });
+    });
+  }
+
+  memoryState = {
+    site_name: 'Arab Cafe',
+    orders: [],
+    categories,
+    items,
+    nextOrderId: 1,
+    lastUpdated: jordanNowIso()
+  };
+
+  return memoryState;
+}
   const items = [];
   for (const cat of SEED.MENU_DATA) {
     const category = categories.find((c) => c.name === cat.name);
@@ -88,7 +120,7 @@ async function loadState() {
 }
 async function saveState(state) {
   state.lastUpdated = jordanNowIso();
-  await store.setJSON('state.json', state);
+  memoryState = state;
 }
 
 function publicMenu(state) {
