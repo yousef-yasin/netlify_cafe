@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arab Cafe</title>
+  <link rel="stylesheet" href="/static/css/bootstrap.rtl.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="student-layout">
+  <div id="site-shell"></div>
+  <script src="/static/js/app-common.js"></script>
+  <script>
+    CAFE.ensureBase('Arab Cafe');
+    document.body.classList.add('student-layout');
+    const content = document.getElementById('page-content');
+    content.innerHTML = `
+<section class="container mt-4 student-page">
+  <div class="menu-header mb-3"><div><h1 class="menu-page-title mb-1">المنيو</h1><p class="menu-page-subtitle mb-0">اختر القسم ثم أضف الطلبات بسهولة.</p></div><div class="menu-header-badge" id="category-count">0 أقسام</div></div>
+  <div class="cart-floating-wrap"><button type="button" class="cart-floating-btn" id="cart-float-btn"><span class="cart-floating-icon">🛒</span><span>السلة</span><span class="cart-floating-count" id="cart-count">0</span></button><div class="cart-added-toast" id="cart-added-toast"><span class="cart-floating-icon">🛒</span><span id="cart-toast-text">تمت إضافة المنتج إلى السلة</span></div></div>
+  <div class="featured-strip mb-4" id="featured-strip"></div>
+  <div class="category-tabs-wrap mb-4"><div class="category-tabs" id="categoryTabs"></div></div>
+  <div class="row g-4 align-items-start"><div class="col-12" id="menu-panels"></div></div>
+</section>
+<div class="cart-drawer-backdrop" id="cart-backdrop"></div>
+<aside class="cart-drawer" id="cart-drawer" aria-hidden="true"><div class="order-panel cart-drawer-panel"><div class="d-flex justify-content-between align-items-center mb-3 gap-3"><div><h3 class="mb-1">سلة الطلب</h3><div class="text-muted small">راجع طلبك ثم أرسله مباشرة.</div></div><button type="button" class="cart-close-btn" id="cart-close-btn">✕</button></div><div id="cart-items" class="cart-items-box mb-3 text-muted">لسا ما أضفت أي منتج.</div><div class="checkout-total mb-3"><span>المجموع</span><strong id="cart-total">0.00 د.أ</strong></div><form id="order-form"><div class="mb-3"><label class="form-label">اسم الطالب</label><input name="student_name" class="form-control form-control-lg rounded-4" placeholder="مثال: أحمد خالد" required></div><div class="mb-3"><label class="form-label">رقم التلفون</label><input name="phone" class="form-control form-control-lg rounded-4" placeholder="07xxxxxxxx" required></div><div class="mb-3"><label class="form-label">اختر المبنى</label><select name="building" class="form-select form-select-lg rounded-4" required><option value="" selected disabled>اختر المبنى</option><option value="I">مبنى I</option><option value="B">مبنى B</option></select></div><div class="mb-3"><label class="form-label">ملاحظات</label><textarea name="notes" class="form-control rounded-4" rows="3" placeholder="بدون بصل، زيادة جبنة..."></textarea></div><button class="btn btn-dark btn-lg w-100 rounded-pill fw-bold" type="submit">تأكيد وإرسال الطلب</button></form></div></aside>`;
+
+    const cart = {};
+    const cartItemsEl = document.getElementById('cart-items');
+    const cartTotalEl = document.getElementById('cart-total');
+    const cartCountEl = document.getElementById('cart-count');
+    const cartFloatBtn = document.getElementById('cart-float-btn');
+    const cartDrawer = document.getElementById('cart-drawer');
+    const cartBackdrop = document.getElementById('cart-backdrop');
+    const cartCloseBtn = document.getElementById('cart-close-btn');
+    const cartToastEl = document.getElementById('cart-added-toast');
+    const cartToastTextEl = document.getElementById('cart-toast-text');
+    let cartToastTimer = null;
+    function openCartDrawer(){ cartDrawer.classList.add('open'); cartBackdrop.classList.add('show'); document.body.classList.add('cart-drawer-open'); cartDrawer.setAttribute('aria-hidden','false'); }
+    function closeCartDrawer(){ cartDrawer.classList.remove('open'); cartBackdrop.classList.remove('show'); document.body.classList.remove('cart-drawer-open'); cartDrawer.setAttribute('aria-hidden','true'); }
+    function showCartToast(message){ cartToastTextEl.textContent = message; cartToastEl.classList.add('show'); clearTimeout(cartToastTimer); cartToastTimer = setTimeout(() => cartToastEl.classList.remove('show'), 2200); }
+    function pulseButton(button){ button.classList.add('added'); setTimeout(() => button.classList.remove('added'), 350); }
+    function renderCart(){ const entries = Object.values(cart); if(!entries.length){ cartItemsEl.innerHTML = '<div class="text-muted">لسا ما أضفت أي منتج.</div>'; cartTotalEl.textContent = '0.00 د.أ'; cartCountEl.textContent = '0'; return; } let total=0,count=0; cartItemsEl.innerHTML = entries.map(item=>{ const subtotal=item.price*item.qty; total+=subtotal; count += item.qty; return `<div class="cart-row"><div class="d-flex justify-content-between align-items-start gap-2"><div><strong>${item.name}</strong><div class="small text-muted mt-1">${item.price.toFixed(2)} د.أ</div></div><strong>${subtotal.toFixed(2)} د.أ</strong></div><div class="d-flex align-items-center gap-2 mt-2"><button type="button" class="qty-btn" onclick="changeQty(${item.id}, -1)">-</button><span class="fw-bold">${item.qty}</span><button type="button" class="qty-btn" onclick="changeQty(${item.id}, 1)">+</button></div></div>`; }).join(''); cartCountEl.textContent=String(count); cartTotalEl.textContent=`${total.toFixed(2)} د.أ`; }
+    window.changeQty = (id, delta) => { if(!cart[id]) return; cart[id].qty += delta; if(cart[id].qty <= 0) delete cart[id]; renderCart(); };
+    cartFloatBtn.addEventListener('click', openCartDrawer); cartCloseBtn.addEventListener('click', closeCartDrawer); cartBackdrop.addEventListener('click', closeCartDrawer); document.addEventListener('keydown', (event)=>{ if(event.key==='Escape') closeCartDrawer(); });
+    async function loadMenu(){ const data = await CAFE.api('/api/public-menu'); document.getElementById('category-count').textContent = `${data.categories.length} أقسام`; const featured = document.getElementById('featured-strip'); featured.innerHTML = data.featured_items.map(item=>`<div class="featured-pill">${item.name} • ${CAFE.money(item.price)}</div>`).join(''); const tabs = document.getElementById('categoryTabs'); const panels = document.getElementById('menu-panels'); tabs.innerHTML = data.categories.map((cat,idx)=>`<button type="button" class="category-tab-btn ${idx===0?'active':''}" data-target="category-${cat.id}">${cat.name}</button>`).join(''); panels.innerHTML = data.categories.map((cat, idx)=>`<section class="menu-category-panel ${idx===0?'active':''}" id="category-${cat.id}"><div class="section-heading mb-3"><h2 class="section-title mb-1">${cat.name}</h2><div class="text-muted small">${cat.items.length} صنف متاح</div></div><div class="row g-3">${cat.items.length ? cat.items.map(item=>`<div class="col-md-6 col-xl-4 col-12"><div class="item-card h-100 ${!cat.show_image?'no-image-card':''}">${cat.show_image && (item.image_data_url || item.image_url) ? `<img src="${item.image_data_url || item.image_url}" alt="${item.name}" class="item-image">` : ''}<div class="p-3 d-flex flex-column h-100"><div class="d-flex justify-content-between gap-3 mb-3 align-items-start product-head"><div><h5 class="mb-1">${item.name}</h5><p class="text-muted small mb-0">${item.description || ''}</p></div><span class="price-tag">${CAFE.money(item.price)}</span></div><div class="mt-auto"><button class="btn btn-dark w-100 rounded-pill add-to-cart" data-id="${item.id}" data-name="${item.name}" data-price="${item.price}">أضف للسلة</button></div></div></div></div>`).join('') : '<div class="col-12"><div class="empty-box">لا يوجد أصناف متاحة حاليًا في هذا القسم.</div></div>'}</div></section>`).join('');
+      document.querySelectorAll('.category-tab-btn').forEach((button)=>button.addEventListener('click', function(){ const targetId=this.dataset.target; document.querySelectorAll('.category-tab-btn').forEach(btn=>btn.classList.remove('active')); document.querySelectorAll('.menu-category-panel').forEach(panel=>panel.classList.remove('active')); this.classList.add('active'); const targetPanel=document.getElementById(targetId); if(targetPanel){ targetPanel.classList.add('active'); if(window.innerWidth<992){ window.scrollTo({ top: targetPanel.offsetTop - 120, behavior: 'smooth' }); } } }));
+      document.querySelectorAll('.add-to-cart').forEach(btn=>btn.addEventListener('click', ()=>{ const id=Number(btn.dataset.id), name=btn.dataset.name, price=Number(btn.dataset.price); if(!cart[id]) cart[id]={ id, name, price, qty:0 }; cart[id].qty += 1; renderCart(); pulseButton(btn); showCartToast(`تمت إضافة ${name} إلى السلة`); }));
+    }
+    document.getElementById('order-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const entries = Object.values(cart).map(i => ({ id: i.id, qty: i.qty }));
+      if (!entries.length) return CAFE.flash('السلة فاضية.', 'danger');
+      const formData = new FormData(e.target);
+      try {
+        const result = await CAFE.api('/api/orders', { method: 'POST', body: JSON.stringify({ student_name: formData.get('student_name'), phone: formData.get('phone'), building: formData.get('building'), notes: formData.get('notes'), cart: entries }) });
+        CAFE.flash(`تم إرسال الطلب بنجاح. رقم الطلب #${result.order.id}`, 'success');
+        Object.keys(cart).forEach(k => delete cart[k]); renderCart(); e.target.reset(); closeCartDrawer();
+      } catch (error) { CAFE.flash(error.message, 'danger'); }
+    });
+    loadMenu().catch(err => CAFE.flash(err.message, 'danger'));
+  </script>
+  <script src="/static/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
